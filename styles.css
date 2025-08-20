@@ -102,8 +102,7 @@ svg.route{position:absolute;inset:0}
 
 /* ========= ANIMATIONS ========= */
 @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}
-}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .slide{animation:slideIn .35s ease}
 
 /* ========= MOBILE OPTIMIZATION ========= */
