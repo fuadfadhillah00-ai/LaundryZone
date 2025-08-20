@@ -115,9 +115,8 @@
 </head>
 <body>
   <header class="nav">
-    <div class="brand">
-      <div class="logo" style="padding:0;">
-        <img src="logo laundryzone.png" alt="LaundryZone Logo" style="width:40px; height:40px; border-radius:12px; object-fit:cover;">
+    <div class="container nav-inner">
+      <div class="brand"><div class="logo">🧺</div>LaundryZone</div>
       <nav class="menu" id="mainMenu">
         <button data-view="home" class="active">Beranda</button>
         <button data-view="order">Pesan</button>
@@ -171,7 +170,7 @@
   <script>
     // ===== Utilities
     const $ = (s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-    const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t.__to);t.__to=setTimeout(()=>t.classList.remove('show'),3000);};
+    const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),3000);};
     const notify=(m)=>{const n=$('#notif');const d=document.createElement('div');d.className='notif';d.textContent=m;n.appendChild(d);setTimeout(()=>{d.remove()},4000)}
     const saveLS=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
     const loadLS=(k,def)=>{try{const v=JSON.parse(localStorage.getItem(k)); return v??def}catch{return def}}
@@ -226,8 +225,8 @@
             <h2>${dict[LANG].homeSub}</h2>
             <div class='grid cols-4' style='margin-top:14px'>
               ${[
-                {t:'Kiloan',i:'🧺'},{t:'Express',i:'⚡'},{t:'Cuci Sepatu',i:'👟'},{t:'Cuci Jas',i:'🤵'},{t:'Dry Clean',i:'🧥'},{t:'Setrika',i:'🧯'},{t:'Bed Cover',i:'🛏️'},{t:'Karpet',i:'🧽'}
-              ].map(s=>`<div class='pill'><span>${s.i}</span><b>${s.t}</b></div>`).join('')}
+                {t:'Kiloan',i:'🧺'},{t:'Express',i:'⚡'},{t:'Cuci Sepatu',i:'👟'},{t:'Cuci Jas',i:'🤵'},{t:'Dry Clean',i:'🧥'},{t:'Setrika',i:'🧯'},{t:'Bed Cover',i:'🛏'},{t:'Karpet',i:'🧽'}
+              ].map(s=><div class='pill'><span>${s.i}</span><b>${s.t}</b></div>).join('')}
             </div>
             <button class='btn' style='margin-top:14px' onclick="navigate('order')">Mulai Pesan</button>
           </div>
@@ -291,11 +290,11 @@
           <div class='card'>
             <div class='row'>
               <div class='pill'><span style='font-size:1.4rem'>${sh.logo}</span><b>${sh.name}</b></div>
-              <button class='btn icon' data-fav='${sh.id}'>${isFav(sh.id)?'❤️':'🤍'}</button>
+              <button class='btn icon' data-fav='${sh.id}'>${isFav(sh.id)?'❤':'🤍'}</button>
             </div>
             <p class='chip' style='margin-top:6px'>${sh.dist} km • ⭐ ${sh.rating} • ${sh.promo}</p>
             <h3 style='margin-top:10px'>Layanan</h3>
-            <div class='grid cols-4' style='margin-top:6px'>${sh.services.map(s=>`<div class='pill'>${iconFor(s)}<b>${s}</b></div>`).join('')}</div>
+            <div class='grid cols-4' style='margin-top:6px'>${sh.services.map(s=><div class='pill'>${iconFor(s)}<b>${s}</b></div>).join('')}</div>
             <div class='row' style='margin-top:12px; gap:10px'>
               <button class='btn' onclick="prefillShop('${sh.name}')">Pesan di sini</button>
               <button class='btn secondary' onclick="openLaundryChat('${sh.id}','${sh.name}')">Chat Laundry</button>
@@ -350,7 +349,7 @@
           detailHTML += `
           <div class="card ${animate?'slide':''}" style="margin-top:20px">
             <h3>Lacak Pesanan</h3>
-            <div class='steps'>${[0,1,2,3].map(i=>`<div class='step' data-step='${i}'></div>`).join('')}</div>
+            <div class='steps'>${[0,1,2,3].map(i=><div class='step' data-step='${i}'></div>).join('')}</div>
             <div class='progress'><div class='progress-bar' id='prog'></div></div>
             <div class='map' id='map'>
               <div class='gridline'></div>
@@ -389,7 +388,7 @@
             presetChat();
           },50);
         }
-        app.innerHTML = `<div class="grid cols-2">${detailHTML}</div>`;
+        app.innerHTML = <div class="grid cols-2">${detailHTML}</div>;
       }
 
       if(currentView==='promos'){
@@ -398,7 +397,7 @@
             {c:'WELCOME50',d:'Diskon 50% order pertama.'},
             {c:'EXPRESS10',d:'Diskon 10% layanan express.'},
             {c:'BUNDLEFREE',d:'Gratis jemput-antar untuk paket langganan.'}
-          ].map(p=>`<div class='card'><h3>${p.c}</h3><p>${p.d}</p><button class='btn secondary' onclick="toast('Promo ${p.c} digunakan')">Gunakan</button></div>`).join('')}
+          ].map(p=><div class='card'><h3>${p.c}</h3><p>${p.d}</p><button class='btn secondary' onclick="toast('Promo ${p.c} digunakan')">Gunakan</button></div>).join('')}
         </div>`;
       }
 
@@ -437,11 +436,11 @@
     }
 
     // ===== Helpers UI
-    function iconFor(s){const map={Kiloan:'🧺',Express:'⚡',Sepatu:'👟','Cuci Sepatu':'👟','Cuci Jas':'🤵','Dry Clean':'🧥','Jas':'🤵'};return `<span>${map[s]||'🧼'}</span>`}
+    function iconFor(s){const map={Kiloan:'🧺',Express:'⚡',Sepatu:'👟','Cuci Sepatu':'👟','Cuci Jas':'🤵','Dry Clean':'🧥','Jas':'🤵'};return <span>${map[s]||'🧼'}</span>}
 
     function shopCard(sh){return `<div class='card shop-card'>
       <div class='row'><div class='pill'><span style='font-size:1.4rem'>${sh.logo}</span><b>${sh.name}</b></div>
-      <button class='btn icon' data-fav='${sh.id}'>${isFav(sh.id)?'❤️':'🤍'}</button></div>
+      <button class='btn icon' data-fav='${sh.id}'>${isFav(sh.id)?'❤':'🤍'}</button></div>
       <div class='row'><span>⭐ ${sh.rating}</span><span>${sh.dist} km</span></div>
       <div class='chip'>${sh.promo}</div>
       <div class='row' style='gap:10px'>
@@ -524,7 +523,7 @@
       });
       let pan=false, sx=0, sy=0; const grid=$('.gridline',map);
       map.addEventListener('pointerdown',e=>{if(e.target.classList.contains('marker')) return; pan=true; sx=e.clientX; sy=e.clientY;});
-      map.addEventListener('pointermove',e=>{ if(!pan) return; grid.style.backgroundPosition = `${(e.clientX-sx)/2}px ${(e.clientY-sy)/2}px`; });
+      map.addEventListener('pointermove',e=>{ if(!pan) return; grid.style.backgroundPosition = ${(e.clientX-sx)/2}px ${(e.clientY-sy)/2}px; });
       map.addEventListener('pointerup',()=> pan=false);
     }
 
@@ -554,11 +553,11 @@
           updateETA();
           updateProgressUI();
           setOrderProgress(currentOrderId, courier.progress);
-          if(courier.progress>0.48 && courier.progress<0.52 && !startRideDetail.__hitLaundry){ notify('Cucian sedang diproses di laundry 🧺'); startRideDetail.__hitLaundry=true; }
-          if(courier.progress>0.9 && !startRideDetail.__almostHome){ notify('Kurir hampir sampai rumah 🚪'); startRideDetail.__almostHome=true; }
+          if(courier.progress>0.48 && courier.progress<0.52 && !startRideDetail._hitLaundry){ notify('Cucian sedang diproses di laundry 🧺'); startRideDetail._hitLaundry=true; }
+          if(courier.progress>0.9 && !startRideDetail._almostHome){ notify('Kurir hampir sampai rumah 🚪'); startRideDetail._almostHome=true; }
           if(courier.progress>=1){
             notify('Pesanan selesai ✅');
-            clearInterval(rideTimerDetail); courier.active=false; startRideDetail.__hitLaundry=false; startRideDetail.__almostHome=false;
+            clearInterval(rideTimerDetail); courier.active=false; startRideDetail._hitLaundry=false; startRideDetail._almostHome=false;
             toast('Terima kasih telah menggunakan LaundryZone!');
             setOrderProgress(currentOrderId, 1);
             render();
@@ -566,7 +565,7 @@
         }
       }, 400);
     }
-    function pauseRideDetail(){ clearInterval(rideTimerDetail); courier.active=false; toast('Rute dijeda ⏸️'); }
+    function pauseRideDetail(){ clearInterval(rideTimerDetail); courier.active=false; toast('Rute dijeda ⏸'); }
     function resetRideDetail(){ clearInterval(rideTimerDetail); courier.progress=0; courier.active=false; updateRoutes(); updateETA(true); updateProgressUI(); setOrderProgress(currentOrderId, 0); toast('Rute direset 🔄'); }
 
     function updateETA(manual=false){
@@ -576,7 +575,7 @@
       const remaining=(1-progress)*total;
       const speed=BASE_PX_PER_MIN;
       const min=Math.max(1, Math.round(remaining/speed));
-      $('#eta').textContent=`ETA: ${min} menit`;
+      $('#eta').textContent=ETA: ${min} menit;
       if(manual) notify('ETA diperbarui: '+min+' menit');
     }
 
@@ -588,9 +587,9 @@
         'Noted ya kak. Terima kasih! 😊'
       ],
       eta:[
-        ()=>`Perkiraan sampai ${$('#eta').textContent.replace('ETA: ','')}.`,
-        ()=>`ETA saat ini ${$('#eta').textContent.replace('ETA: ','')}, kak.`,
-        ()=>`Kurang lebih ${$('#eta').textContent.replace('ETA: ','')} ya kak.`
+        ()=>Perkiraan sampai ${$('#eta').textContent.replace('ETA: ','')}.,
+        ()=>ETA saat ini ${$('#eta').textContent.replace('ETA: ','')}, kak.,
+        ()=>Kurang lebih ${$('#eta').textContent.replace('ETA: ','')} ya kak.
       ],
       shoe:[
         'Untuk cuci sepatu estimasinya 1 hari kerja 👟',
@@ -692,4 +691,3 @@
   </script>
 </body>
 </html>
-
