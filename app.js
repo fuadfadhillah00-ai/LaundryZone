@@ -244,7 +244,7 @@ function calcPrice(){
 function openProfile(id){ window.__profileId=id; navigate('profile'); }
 function prefillShop(name){ navigate('order'); setTimeout(()=>{ $('#address').value=name+' (ambil di toko)'; toast('Alamat diisi dari profil: '+name); },50); }
 
-// ===== Tracking for Pesanan (per order)
+// ===== Orders Tracking Feature
 function trackOrderAndScroll(idx){
   showOrderDetail(idx);
   setTimeout(()=>{
@@ -254,7 +254,6 @@ function trackOrderAndScroll(idx){
     }
   }, 100);
 }
-
 function showOrderDetail(idx){
   const order = orders[idx];
   // Setup courier progress for this order
@@ -268,49 +267,4 @@ function showOrderDetail(idx){
       <h2>Lacak Pesanan ${order.id}</h2>
       <span class="status" id="statusBadge">${statuses[order.statusIdx||0]}</span>
       <div class="steps">${[0,1,2,3].map(i=>`<div class="step" data-step="${i}"></div>`).join('')}</div>
-      <div class="progress"><div class="progress-bar" id="prog"></div></div>
-      <div class="map" id="map">
-        <div class="gridline"></div>
-        <svg class="route" viewBox="0 0 800 340" preserveAspectRatio="none">
-          <polyline id="routeMain" fill="none" stroke="var(--blue-2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div class="marker poi" id="home" style="left:${homePt[0]}px;top:${homePt[1]}px">🏠</div>
-        <div class="marker poi" id="laundry" style="left:${laundryPt[0]}px;top:${laundryPt[1]}px">🧺</div>
-        <div class="marker" id="truck">🚚</div>
-        <div class="eta" id="eta">ETA: — menit</div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn secondary" onclick="startRideOrder(${idx})">Mulai Rute</button>
-        <button class="btn secondary" onclick="pauseRideOrder(${idx})">Jeda</button>
-        <button class="btn secondary" onclick="resetRideOrder(${idx})">Reset</button>
-      </div>
-      <div class="card" style="margin-top:10px">
-        <h3>Chat Kurir</h3>
-        <div class="chat">
-          <div class="chat-log" id="chatLog"></div>
-          <div class="chat-input">
-            <input id="chatTxt" class="input" placeholder="Tulis pesan ke kurir...">
-            <button class="btn" onclick="sendMsg()">Kirim</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  // Setup tracking UI
-  initMapInteractions();
-  updateRoutes();
-  initCourier();
-  updateProgressUI();
-  updateETA();
-  presetChat();
-}
-
-// ===== Tracker & Map (Customer Centric: rumah → laundry → rumah)
-function updateProgressUI(){ 
-  const p=Math.min(100, Math.round(courier.progress*100));
-  $('#prog').style.width=(p)+'%';
-  const steps=$$('.step');
-  const badge=$('#statusBadge');
-  // Status berdasar progress di rute bolak-balik
-  let label=statuses[0];
-  if(p<45){ label=statuses[0]; } //
+      <div class="progress"><div
