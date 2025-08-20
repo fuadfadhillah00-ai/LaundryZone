@@ -120,7 +120,7 @@
       <nav class="menu" id="mainMenu">
         <button data-view="home" class="active">Beranda</button>
         <button data-view="order">Pesan</button>
-        <button data-view="track">Lacak</button>
+        <button data-view="orders">Pesanan</button>
         <button data-view="promos">Promo</button>
         <button data-view="subscription">Langganan</button>
         <button data-view="favorites">Favorit</button>
@@ -170,7 +170,7 @@
   <script>
     // ===== Utilities
     const $ = (s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-    const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t.__to);t.__to=setTimeout(()=>t.classList.remove('show'),3000)};
+    const toast=(m)=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t.__to);t.__to=setTimeout(()=>t.classList.remove('show'),3000);};
     const notify=(m)=>{const n=$('#notif');const d=document.createElement('div');d.className='notif';d.textContent=m;n.appendChild(d);setTimeout(()=>{d.remove()},4000)}
     const saveLS=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
     const loadLS=(k,def)=>{try{const v=JSON.parse(localStorage.getItem(k)); return v??def}catch{return def}}
@@ -184,9 +184,9 @@
 
     // ===== State
     let currentView='home';
-    let orders=[]; 
+    let orders=loadLS('orders',[]);
     const statuses=['Dijemput','Diproses','Diantar','Selesai'];
-    let routePts=[[120,260],[420,160],[120,260]]; // rumah -> laundry -> kembali rumah
+    let routePts=[[120,260],[420,160],[120,260]];
     let homePt=[120,260];
     let laundryPt=[420,160];
     let courier={el:null, progress:0, active:false};
@@ -214,6 +214,8 @@
     function star(n){return '★'.repeat(Math.round(n))+'☆'.repeat(5-Math.round(n));}
 
     // ===== Pages
+    let currentOrderId = null; // Untuk detail pesanan
+
     function render(animate=true){
       const app=$('#app');
       if(currentView==='home') {
@@ -311,12 +313,42 @@
         attachFavHandlers();
       }
 
-      if(currentView==='track'){
-        const latest=orders[orders.length-1];
-        app.innerHTML=`<div class='grid cols-2 ${animate?'slide':''}' style='margin-top:20px'>
-          <div class='card'>
-            <h1>Lacak Pesanan</h1>
-            ${latest?`<b>ID:</b> ${latest.id} • <span class='status' id='statusBadge'>${statuses[0]}</span>`:`<div class='notice'>Belum ada pesanan.</div>`}
+      if(currentView==='orders'){
+        app.innerHTML = `<div class='card ${animate?'slide':''}' style='margin-top:20px'>
+          <h1>Daftar Pesanan</h1>
+          <div>
+            ${orders.length ? orders.map(ord => `
+              <div class="pill" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <div>
+                  <b>${ord.id}</b> &bull; ${ord.service} &bull; ${ord.address} 
+                  <span class="chip" style="margin-left:10px;color:${ord.status==='ongoing'?'var(--blue)':'var(--muted)'}">${ord.status==='ongoing'?'Sedang Proses':'Selesai'}</span>
+                </div>
+                <button class="btn secondary" onclick="openOrderDetail('${ord.id}')">Lihat</button>
+              </div>
+            `).join('') : '<div class="notice">Belum ada pesanan.</div>'}
+          </div>
+        </div>`;
+      }
+
+      if(currentView==='orderDetail'){
+        const ord = orders.find(o=>o.id===currentOrderId);
+        if(!ord){navigate('orders');return;}
+        let detailHTML = `
+          <div class="card ${animate?'slide':''}" style="margin-top:20px">
+            <h1>Detail Pesanan</h1>
+            <div><b>ID:</b> ${ord.id}</div>
+            <div><b>Layanan:</b> ${ord.service}</div>
+            <div><b>Alamat:</b> ${ord.address}</div>
+            <div><b>Status:</b> <span class="chip" style="color:${ord.status==='ongoing'?'var(--blue)':'var(--muted)'}">${ord.status==='ongoing'?'Sedang Proses':'Selesai'}</span></div>
+            <div style="margin-top:16px">
+              <button class="btn secondary" onclick="navigate('orders')">Kembali</button>
+            </div>
+          </div>
+        `;
+        if(ord.status === 'ongoing'){
+          detailHTML += `
+          <div class="card ${animate?'slide':''}" style="margin-top:20px">
+            <h3>Lacak Pesanan</h3>
             <div class='steps'>${[0,1,2,3].map(i=>`<div class='step' data-step='${i}'></div>`).join('')}</div>
             <div class='progress'><div class='progress-bar' id='prog'></div></div>
             <div class='map' id='map'>
@@ -330,12 +362,12 @@
               <div class='eta' id='eta'>ETA: — menit</div>
             </div>
             <div style='display:flex;gap:10px;margin-top:10px;flex-wrap:wrap'>
-              <button class='btn secondary' onclick='startRide()'>Mulai Rute</button>
-              <button class='btn secondary' onclick='pauseRide()'>Jeda</button>
-              <button class='btn secondary' onclick='resetRide()'>Reset</button>
+              <button class='btn secondary' onclick='startRideDetail()'>Mulai Rute</button>
+              <button class='btn secondary' onclick='pauseRideDetail()'>Jeda</button>
+              <button class='btn secondary' onclick='resetRideDetail()'>Reset</button>
             </div>
           </div>
-          <div class='card'>
+          <div class='card' style='margin-top:20px'>
             <h3>Chat Kurir</h3>
             <div class='chat'>
               <div class='chat-log' id='chatLog'></div>
@@ -345,13 +377,18 @@
               </div>
             </div>
           </div>
-        </div>`;
-        initMapInteractions();
-        updateRoutes();
-        initCourier();
-        updateProgressUI();
-        updateETA();
-        presetChat();
+          `;
+          setTimeout(()=>{
+            initMapInteractions();
+            updateRoutes();
+            courier.el=$('#truck');
+            courier.progress = ord.progress || 0;
+            updateProgressUI();
+            updateETA();
+            presetChat();
+          },50);
+        }
+        app.innerHTML = `<div class="grid cols-2">${detailHTML}</div>`;
       }
 
       if(currentView==='promos'){
@@ -385,7 +422,7 @@
           <div class='card'><h1>FAQ</h1>
             <details open><summary>Bagaimana cara pesan?</summary><p>Pilih menu Pesan, isi detail, konfirmasi.</p></details>
             <details><summary>Metode pembayaran?</summary><p>Transfer, e-wallet, COD.</p></details>
-            <details><summary>Pelacakan & ETA?</summary><p>Lihat menu Lacak. Rute: rumah → laundry → kembali rumah.</p></details>
+            <details><summary>Pelacakan & ETA?</summary><p>Lihat menu Pesanan, pilih pesanan yang sedang berlangsung untuk fitur lacak.</p></details>
           </div>
           <div class='card'><h1>Kontak</h1>
             <div class='field'><label>Email</label><input class='input'></div>
@@ -423,11 +460,21 @@
 
     function makeOrder(){
       const id='LZ-'+Math.floor(Math.random()*100000);
-      orders.push({id,service:$('#service').value,address:$('#address').value});
+      orders.push({
+        id,
+        service:$('#service').value,
+        address:$('#address').value,
+        date:$('#date').value,
+        pay:$('#pay').value,
+        note:$('#note').value,
+        status:'ongoing',
+        progress:0
+      });
+      saveLS('orders',orders);
       toast('Pesanan '+id+' dibuat');
       addReward(10);
-      courier.progress=0; courier.active=false; // reset perjalanan
-      navigate('track');
+      courier.progress=0; courier.active=false;
+      navigate('orders');
       notify('Kurir menerima pesanan 🚚');
     }
     function calcPrice(){
@@ -440,32 +487,40 @@
     function openProfile(id){ window.__profileId=id; navigate('profile'); }
     function prefillShop(name){ navigate('order'); setTimeout(()=>{ $('#address').value=name+' (ambil di toko)'; toast('Alamat diisi dari profil: '+name); },50); }
 
+    // ===== Pesanan detail helpers
+    function openOrderDetail(id){ currentOrderId = id; navigate('orderDetail'); }
+    function setOrderProgress(orderId, progress){
+      const ord = orders.find(o => o.id === orderId);
+      if (ord) {
+        ord.progress = progress;
+        if (progress >= 1) ord.status = 'done';
+        saveLS('orders', orders);
+      }
+    }
+
     // ===== Tracker & Map (Customer Centric: rumah → laundry → rumah)
     function updateProgressUI(){ 
-      const p=Math.min(100, Math.round(courier.progress*100));
+      const ord = orders.find(o=>o.id===currentOrderId);
+      const p = ord ? Math.min(100, Math.round((ord.progress||0)*100)) : Math.min(100, Math.round(courier.progress*100));
       $('#prog').style.width=(p)+'%';
       const steps=$$('.step');
       const badge=$('#statusBadge');
-      // Status berdasar progress di rute bolak-balik
       let label=statuses[0];
       if(p<45){ label=statuses[0]; } // menuju laundry
       else if(p>=45 && p<55){ label=statuses[1]; } // di laundry
       else if(p>=55 && p<100){ label=statuses[2]; } // menuju rumah
       else { label=statuses[3]; }
-      badge.textContent=label;
+      if(badge) badge.textContent=label;
       steps.forEach((s,i)=> s.classList.toggle('done', (i*33) <= p));
     }
 
     function initMapInteractions(){
       const home=$('#home'); const laund=$('#laundry'); const map=$('#map');
-      // Drag POI
       ;[home,laund].forEach(el=>{
         el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId); el.__drag=true});
         el.addEventListener('pointermove',e=>{if(!el.__drag) return; const r=map.getBoundingClientRect(); const x=Math.min(Math.max(e.clientX-r.left,10),r.width-10); const y=Math.min(Math.max(e.clientY-r.top,10),r.height-10); el.style.left=x+'px'; el.style.top=y+'px'; updateRoutes(); updateETA();});
         el.addEventListener('pointerup',()=>{el.__drag=false; notify('Lokasi diperbarui 📍')});
       });
-
-      // Pan map (visual)
       let pan=false, sx=0, sy=0; const grid=$('.gridline',map);
       map.addEventListener('pointerdown',e=>{if(e.target.classList.contains('marker')) return; pan=true; sx=e.clientX; sy=e.clientY;});
       map.addEventListener('pointermove',e=>{ if(!pan) return; grid.style.backgroundPosition = `${(e.clientX-sx)/2}px ${(e.clientY-sy)/2}px`; });
@@ -473,42 +528,52 @@
     }
 
     function getPt(el){ return [parseFloat(el.style.left), parseFloat(el.style.top)]; }
-
     function updateRoutes(){
       homePt=getPt($('#home')); laundryPt=getPt($('#laundry'));
-      // rute bolak-balik: rumah -> (tengah) -> laundry -> (tengah balik) -> rumah
       const mid1=[ (homePt[0]+laundryPt[0])/2, (homePt[1]+laundryPt[1])/2 - 20];
       const mid2=[ (homePt[0]+laundryPt[0])/2, (homePt[1]+laundryPt[1])/2 + 10];
       routePts=[homePt, mid1, laundryPt, mid2, homePt];
       $('#routeMain').setAttribute('points', routePts.map(pt=>pt.join(',')).join(' '));
       positionOnRoute($('#truck'), routePts, courier.progress);
     }
-
     function routeLength(pts){ let L=0; for(let i=0;i<pts.length-1;i++){const a=pts[i], b=pts[i+1]; L+=Math.hypot(b[0]-a[0], b[1]-a[1]); } return L; }
     function pointAt(pts,t){ const total=routeLength(pts); let d=t*total; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1]; const seg=Math.hypot(b[0]-a[0], b[1]-a[1]); if(d<=seg){ const r=d/seg; return [a[0]+(b[0]-a[0])*r, a[1]+(b[1]-a[1])*r]; } d-=seg; } return pts[pts.length-1]; }
     function positionOnRoute(el,pts,t){ const [x,y]=pointAt(pts,t); el.style.left=x+'px'; el.style.top=y+'px'; }
 
-    let rideTimer=null; const BASE_PX_PER_MIN=140; // 140 px ≈ 1 menit
-    function initCourier(){ courier.el=$('#truck'); }
-
-    function startRide(){ clearInterval(rideTimer); courier.active=true; notify('Kurir sedang menuju laundry 🚚'); rideTimer=setInterval(()=>{
-      const speed=0.01; // progress per tick (konstan, tanpa toggle traffic)
-      if(courier.active){
-        courier.progress=Math.min(1,courier.progress+speed);
-        positionOnRoute(courier.el, routePts, courier.progress);
-        updateETA();
-        updateProgressUI();
-        // event di titik-titik penting
-        if(courier.progress>0.48 && courier.progress<0.52 && !startRide.__hitLaundry){ notify('Cucian sedang diproses di laundry 🧺'); startRide.__hitLaundry=true; }
-        if(courier.progress>0.9 && !startRide.__almostHome){ notify('Kurir hampir sampai rumah 🚪'); startRide.__almostHome=true; }
-        if(courier.progress>=1){ notify('Pesanan selesai ✅'); clearInterval(rideTimer); courier.active=false; startRide.__hitLaundry=false; startRide.__almostHome=false; toast('Terima kasih telah menggunakan LaundryZone!'); }
-      }
-    }, 400); }
-    function pauseRide(){ clearInterval(rideTimer); courier.active=false; toast('Rute dijeda ⏸️'); }
-    function resetRide(){ clearInterval(rideTimer); courier.progress=0; courier.active=false; updateRoutes(); updateETA(true); updateProgressUI(); toast('Rute direset 🔄'); }
+    let rideTimerDetail=null; const BASE_PX_PER_MIN=140;
+    function startRideDetail(){
+      clearInterval(rideTimerDetail);
+      courier.active=true;
+      notify('Kurir sedang menuju laundry 🚚');
+      rideTimerDetail=setInterval(()=>{
+        const speed=0.01;
+        if(courier.active){
+          courier.progress = Math.min(1, courier.progress+speed);
+          positionOnRoute(courier.el, routePts, courier.progress);
+          updateETA();
+          updateProgressUI();
+          setOrderProgress(currentOrderId, courier.progress);
+          if(courier.progress>0.48 && courier.progress<0.52 && !startRideDetail.__hitLaundry){ notify('Cucian sedang diproses di laundry 🧺'); startRideDetail.__hitLaundry=true; }
+          if(courier.progress>0.9 && !startRideDetail.__almostHome){ notify('Kurir hampir sampai rumah 🚪'); startRideDetail.__almostHome=true; }
+          if(courier.progress>=1){
+            notify('Pesanan selesai ✅');
+            clearInterval(rideTimerDetail); courier.active=false; startRideDetail.__hitLaundry=false; startRideDetail.__almostHome=false;
+            toast('Terima kasih telah menggunakan LaundryZone!');
+            setOrderProgress(currentOrderId, 1);
+            render();
+          }
+        }
+      }, 400);
+    }
+    function pauseRideDetail(){ clearInterval(rideTimerDetail); courier.active=false; toast('Rute dijeda ⏸️'); }
+    function resetRideDetail(){ clearInterval(rideTimerDetail); courier.progress=0; courier.active=false; updateRoutes(); updateETA(true); updateProgressUI(); setOrderProgress(currentOrderId, 0); toast('Rute direset 🔄'); }
 
     function updateETA(manual=false){
-      const total=routeLength(routePts); const remaining=(1-courier.progress)*total; const speed=BASE_PX_PER_MIN; // px per minute
+      const total=routeLength(routePts); 
+      const ord = orders.find(o=>o.id===currentOrderId);
+      const progress = ord ? (ord.progress||0) : (courier.progress||0);
+      const remaining=(1-progress)*total;
+      const speed=BASE_PX_PER_MIN;
       const min=Math.max(1, Math.round(remaining/speed));
       $('#eta').textContent=`ETA: ${min} menit`;
       if(manual) notify('ETA diperbarui: '+min+' menit');
@@ -615,13 +680,11 @@
 
     // ===== Init
     function init(){
-      // Restore theme/lang
       const dark=loadLS('THEME_DARK',false); themeToggle.checked=!!dark; applyTheme();
       $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN';
-
       $$('#mainMenu button').forEach(b=> b.onclick=()=>navigate(b.dataset.view));
       moveInk($$('#mainMenu button')[0]);
-      render(false); // first render without slide anim
+      render(false);
     }
 
     init();
