@@ -150,7 +150,7 @@ function render(animate=true){
             <div><b>ID:</b> ${order.id} • <span class="status">${statuses[order.statusIdx||0]}</span></div>
             <div><b>Layanan:</b> ${order.service}</div>
             <div><b>Alamat:</b> ${order.address}</div>
-            <button class="btn secondary" onclick="trackOrderAndScroll(${idx})">Lacak</button>
+            <button class="btn secondary" onclick="showOrderDetail(${idx})">Lacak</button>
           </div>
         `).join('') : '<div class="notice">Belum ada pesanan.</div>'}
       </div>
@@ -244,16 +244,7 @@ function calcPrice(){
 function openProfile(id){ window.__profileId=id; navigate('profile'); }
 function prefillShop(name){ navigate('order'); setTimeout(()=>{ $('#address').value=name+' (ambil di toko)'; toast('Alamat diisi dari profil: '+name); },50); }
 
-// ===== Orders Tracking Feature
-function trackOrderAndScroll(idx){
-  showOrderDetail(idx);
-  setTimeout(()=>{
-    const detail = document.getElementById('orderDetail');
-    if(detail){
-      detail.scrollIntoView({behavior:"smooth"});
-    }
-  }, 100);
-}
+// ===== Tracking for Pesanan (per order)
 function showOrderDetail(idx){
   const order = orders[idx];
   // Setup courier progress for this order
@@ -267,4 +258,228 @@ function showOrderDetail(idx){
       <h2>Lacak Pesanan ${order.id}</h2>
       <span class="status" id="statusBadge">${statuses[order.statusIdx||0]}</span>
       <div class="steps">${[0,1,2,3].map(i=>`<div class="step" data-step="${i}"></div>`).join('')}</div>
-      <div class="progress"><div
+      <div class="progress"><div class="progress-bar" id="prog"></div></div>
+      <div class="map" id="map">
+        <div class="gridline"></div>
+        <svg class="route" viewBox="0 0 800 340" preserveAspectRatio="none">
+          <polyline id="routeMain" fill="none" stroke="var(--blue-2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="marker poi" id="home" style="left:${homePt[0]}px;top:${homePt[1]}px">🏠</div>
+        <div class="marker poi" id="laundry" style="left:${laundryPt[0]}px;top:${laundryPt[1]}px">🧺</div>
+        <div class="marker" id="truck">🚚</div>
+        <div class="eta" id="eta">ETA: — menit</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn secondary" onclick="startRideOrder(${idx})">Mulai Rute</button>
+        <button class="btn secondary" onclick="pauseRideOrder(${idx})">Jeda</button>
+        <button class="btn secondary" onclick="resetRideOrder(${idx})">Reset</button>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <h3>Chat Kurir</h3>
+        <div class="chat">
+          <div class="chat-log" id="chatLog"></div>
+          <div class="chat-input">
+            <input id="chatTxt" class="input" placeholder="Tulis pesan ke kurir...">
+            <button class="btn" onclick="sendMsg()">Kirim</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  // Setup tracking UI
+  initMapInteractions();
+  updateRoutes();
+  initCourier();
+  updateProgressUI();
+  updateETA();
+  presetChat();
+}
+
+// ===== Tracker & Map (Customer Centric: rumah → laundry → rumah)
+function updateProgressUI(){ 
+  const p=Math.min(100, Math.round(courier.progress*100));
+  $('#prog').style.width=(p)+'%';
+  const steps=$$('.step');
+  const badge=$('#statusBadge');
+  // Status berdasar progress di rute bolak-balik
+  let label=statuses[0];
+  if(p<45){ label=statuses[0]; } // menuju laundry
+  else if(p>=45 && p<55){ label=statuses[1]; } // di laundry
+  else if(p>=55 && p<100){ label=statuses[2]; } // menuju rumah
+  else { label=statuses[3]; }
+  badge.textContent=label;
+  steps.forEach((s,i)=> s.classList.toggle('done', (i*33) <= p));
+}
+
+function initMapInteractions(){
+  const home=$('#home'); const laund=$('#laundry'); const map=$('#map');
+  // Drag POI
+  ;[home,laund].forEach(el=>{
+    el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId); el.__drag=true});
+    el.addEventListener('pointermove',e=>{if(!el.__drag) return; const r=map.getBoundingClientRect(); const x=Math.min(Math.max(e.clientX-r.left,10),r.width-10); const y=Math.min(Math.max(e.clientY-r.top,10),r.height-10); el.style.left=x+'px'; el.style.top=y+'px'; updateRoutes(); updateETA();});
+    el.addEventListener('pointerup',()=>{el.__drag=false; notify('Lokasi diperbarui 📍')});
+  });
+
+  // Pan map (visual)
+  let pan=false, sx=0, sy=0; const grid=$('.gridline',map);
+  map.addEventListener('pointerdown',e=>{if(e.target.classList.contains('marker')) return; pan=true; sx=e.clientX; sy=e.clientY;});
+  map.addEventListener('pointermove',e=>{ if(!pan) return; grid.style.backgroundPosition = `${(e.clientX-sx)/2}px ${(e.clientY-sy)/2}px`; });
+  map.addEventListener('pointerup',()=> pan=false);
+}
+
+function getPt(el){ return [parseFloat(el.style.left), parseFloat(el.style.top)]; }
+
+function updateRoutes(){
+  homePt=getPt($('#home')); laundryPt=getPt($('#laundry'));
+  // rute bolak-balik: rumah -> (tengah) -> laundry -> (tengah balik) -> rumah
+  const mid1=[ (homePt[0]+laundryPt[0])/2, (homePt[1]+laundryPt[1])/2 - 20];
+  const mid2=[ (homePt[0]+laundryPt[0])/2, (homePt[1]+laundryPt[1])/2 + 10];
+  routePts=[homePt, mid1, laundryPt, mid2, homePt];
+  $('#routeMain').setAttribute('points', routePts.map(pt=>pt.join(',')).join(' '));
+  positionOnRoute($('#truck'), routePts, courier.progress);
+}
+
+function routeLength(pts){ let L=0; for(let i=0;i<pts.length-1;i++){const a=pts[i], b=pts[i+1]; L+=Math.hypot(b[0]-a[0], b[1]-a[1]); } return L; }
+function pointAt(pts,t){ const total=routeLength(pts); let d=t*total; for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1]; const seg=Math.hypot(b[0]-a[0], b[1]-a[1]); if(d<=seg){ const r=d/seg; return [a[0]+(b[0]-a[0])*r, a[1]+(b[1]-a[1])*r]; } d-=seg; } return pts[pts.length-1]; }
+function positionOnRoute(el,pts,t){ const [x,y]=pointAt(pts,t); el.style.left=x+'px'; el.style.top=y+'px'; }
+
+let rideTimer=null; const BASE_PX_PER_MIN=140; // 140 px ≈ 1 menit
+function initCourier(){ courier.el=$('#truck'); }
+
+function startRideOrder(idx){ clearInterval(rideTimer); courier.active=true; notify('Kurir sedang menuju laundry 🚚'); rideTimer=setInterval(()=>{
+  const speed=0.01; // progress per tick
+  if(courier.active){
+    courier.progress=Math.min(1,courier.progress+speed);
+    positionOnRoute(courier.el, routePts, courier.progress);
+    updateETA();
+    updateProgressUI();
+    // Save progress to the order
+    orders[idx].progress = courier.progress;
+    // event di titik-titik penting
+    if(courier.progress>0.48 && courier.progress<0.52 && !startRideOrder.__hitLaundry){ notify('Cucian sedang diproses di laundry 🧺'); startRideOrder.__hitLaundry=true; orders[idx].statusIdx=1; }
+    if(courier.progress>0.9 && !startRideOrder.__almostHome){ notify('Kurir hampir sampai rumah 🚪'); startRideOrder.__almostHome=true; orders[idx].statusIdx=2; }
+    if(courier.progress>=1){ notify('Pesanan selesai ✅'); clearInterval(rideTimer); courier.active=false; startRideOrder.__hitLaundry=false; startRideOrder.__almostHome=false; toast('Terima kasih telah menggunakan LaundryZone!'); orders[idx].statusIdx=3; }
+    $('#statusBadge').textContent = statuses[orders[idx].statusIdx||0];
+  }
+}, 400); }
+function pauseRideOrder(idx){ clearInterval(rideTimer); courier.active=false; toast('Rute dijeda ⏸️'); }
+function resetRideOrder(idx){ clearInterval(rideTimer); courier.progress=0; courier.active=false; orders[idx].progress=0; orders[idx].statusIdx=0; updateRoutes(); updateETA(true); updateProgressUI(); toast('Rute direset 🔄'); $('#statusBadge').textContent = statuses[0]; }
+
+function updateETA(manual=false){
+  const total=routeLength(routePts); const remaining=(1-courier.progress)*total; const speed=BASE_PX_PER_MIN; // px per minute
+  const min=Math.max(1, Math.round(remaining/speed));
+  $('#eta').textContent=`ETA: ${min} menit`;
+  if(manual) notify('ETA diperbarui: '+min+' menit');
+}
+
+// ===== Chat dengan variasi jawaban (Kurir)
+const replyPool={
+  general:[
+    'Siap kak, saya teruskan ya. 🙌',
+    'Baik kak, segera diproses. 👍',
+    'Noted ya kak. Terima kasih! 😊'
+  ],
+  eta:[
+    ()=>`Perkiraan sampai ${$('#eta').textContent.replace('ETA: ','')}.`,
+    ()=>`ETA saat ini ${$('#eta').textContent.replace('ETA: ','')}, kak.`,
+    ()=>`Kurang lebih ${$('#eta').textContent.replace('ETA: ','')} ya kak.`
+  ],
+  shoe:[
+    'Untuk cuci sepatu estimasinya 1 hari kerja 👟',
+    'Sepatu biasanya selesai ±1 hari, kak.',
+    'Cuci sepatu kami butuh sekitar 24 jam, kak.'
+  ],
+  thanks:[
+    'Sama-sama kak! 🙏',
+    'Terima kasih kembali 😊',
+    'Senang membantu!'
+  ],
+  request:[
+    'Oke, saya catat ya kak. 🙏',
+    'Siap, akan saya perhatikan. 👍',
+    'Baik, sudah dicatat ya kak.'
+  ]
+};
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function elMsg(txt,me=false){ const d=document.createElement('div'); d.className='msg '+(me?'me':'them'); d.textContent=typeof txt==='function'?txt():txt; return d; }
+function presetChat(){ const log=$('#chatLog'); if(!log) return; log.innerHTML=''; log.appendChild(elMsg('Halo, saya kurir LaundryZone. Saya jemput dulu ya 🚚')); log.appendChild(elMsg('Siap kak, ditunggu 🙌', true)); log.scrollTop=log.scrollHeight; }
+function sendMsg(){ const inp=$('#chatTxt'); if(!inp.value.trim()) return; const log=$('#chatLog'); const text=inp.value; const userText=text.toLowerCase(); log.appendChild(elMsg(text,true)); log.scrollTop=log.scrollHeight; inp.value=''; setTimeout(()=>{
+    let reply=pick(replyPool.general);
+    if(userText.includes('berapa')||userText.includes('eta')||userText.includes('sampai')) reply=pick(replyPool.eta);
+    if(userText.includes('sepatu')||userText.includes('shoes')) reply=pick(replyPool.shoe);
+    if(userText.includes('terima kasih')||userText.includes('makasih')||userText.includes('thanks')) reply=pick(replyPool.thanks);
+    if(userText.includes('tolong')||userText.includes('mohon')||userText.includes('please')) reply=pick(replyPool.request);
+    log.appendChild(elMsg(reply)); log.scrollTop=log.scrollHeight; 
+},700); }
+
+// ===== Chat ke Laundry (BARU, customer-centric)
+let currentLaundryChat={id:null,name:null};
+const replyPoolLaundry={
+  general:[
+    'Halo kak, LaundryZone store di sini. Ada yang bisa dibantu? 😊',
+    'Siap kak, kami bantu ya. 🙌',
+    'Noted kak, terima kasih sudah menghubungi kami.'
+  ],
+  price:[
+    'Untuk kiloan mulai Rp7.000/kg, express Rp10.000/kg.',
+    'Sepatu Rp25.000/psg, jas/dry clean Rp40.000/item ya kak.',
+    'Ada promo aktif: Cashback 10% untuk beberapa outlet.'
+  ],
+  time:[
+    'Estimasi selesai 1–2 hari untuk reguler. Express bisa lebih cepat.',
+    'Kalau antrean normal, besok sudah selesai kak. 🙏',
+    'Untuk sepatu biasanya 24 jam.'
+  ],
+  thanks:[
+    'Terima kasih kembali kak! 😊',
+    'Sama-sama kak, senang membantu! 🙏',
+    'Siap, ditunggu pesanannya ya kak.'
+  ]
+};
+
+function openLaundryChat(id,name){
+  currentLaundryChat={id,name};
+  $('#laundryChatTitle').textContent = 'Chat — '+name;
+  const log=$('#laundryChatLog');
+  log.innerHTML='';
+  log.appendChild(elMsg('Halo kak, '+name+' di sini. Ada yang bisa kami bantu?')); 
+  toggleLaundryChat(true);
+  setTimeout(()=>{log.scrollTop=log.scrollHeight},0);
+}
+function toggleLaundryChat(show){ $('#laundryChatModal').style.display = show?'flex':'none'; }
+function sendLaundryMsg(){
+  const inp=$('#laundryChatTxt'); const txt=inp.value.trim(); if(!txt) return; const log=$('#laundryChatLog');
+  log.appendChild(elMsg(txt,true)); log.scrollTop=log.scrollHeight; inp.value='';
+  const t=txt.toLowerCase();
+  setTimeout(()=>{
+    let reply=pick(replyPoolLaundry.general);
+    if(t.includes('harga')||t.includes('biaya')||t.includes('tarif')) reply=pick(replyPoolLaundry.price);
+    if(t.includes('estimasi')||t.includes('kapan')||t.includes('waktu')||t.includes('selesai')) reply=pick(replyPoolLaundry.time);
+    if(t.includes('terima kasih')||t.includes('makasih')||t.includes('thanks')) reply=pick(replyPoolLaundry.thanks);
+    log.appendChild(elMsg(reply)); log.scrollTop=log.scrollHeight;
+  },650);
+}
+
+// ===== Payment Modal + QR dummy
+function togglePay(show){ $('#payModal').style.display = show?'flex':'none'; if(show) drawQR(); }
+function drawQR(){ const c=$('#qr'); const ctx=c.getContext('2d'); const s=20; ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); for(let y=0;y<c.height;y+=s){ for(let x=0;x<c.width;x+=s){ if((x+y)%40===0 || Math.random()>.75){ ctx.fillStyle='#000'; ctx.fillRect(x+2,y+2,s-4,s-4);} } } ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--blue'); ctx.fillRect(10,10,60,60); ctx.fillRect(c.width-70,10,60,60); ctx.fillRect(10,c.height-70,60,60); }
+
+// ===== Shortcuts
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='g') { themeToggle.checked=!themeToggle.checked; applyTheme(); }
+  if(e.key==='/'){ e.preventDefault(); navigate('order'); }
+});
+
+// ===== Init
+function init(){
+  // Restore theme/lang
+  const dark=loadLS('THEME_DARK',false); themeToggle.checked=!!dark; applyTheme();
+  $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN';
+
+  $$('#mainMenu button').forEach(b=> b.onclick=()=>navigate(b.dataset.view));
+  moveInk($$('#mainMenu button')[0]);
+  render(false); // first render without slide anim
+}
+
+init();
