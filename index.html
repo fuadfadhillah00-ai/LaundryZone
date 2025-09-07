@@ -28,11 +28,7 @@
     .nav{position:sticky;top:0;background:linear-gradient(180deg,var(--white),#ffffffd9);backdrop-filter:blur(8px);border-bottom:1px solid var(--gray-2);z-index:20}
     .nav-inner{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
     .brand{display:flex;align-items:center;gap:.7rem;font-weight:900;color:var(--blue)}
-   .brand .logo{
-  width:40px;
-  height:40px;
-  object-fit:contain;
-}
+    .brand .logo{width:40px;height:40px;object-fit:contain;
     .menu{position:relative;display:flex;gap:6px;flex-wrap:wrap}
     .menu button{background:transparent;border:0;padding:.7rem 1rem;border-radius:12px;color:var(--muted);cursor:pointer;font-weight:700;transition:.25s}
     .menu button.active,.menu button:hover{color:var(--blue);}
@@ -119,7 +115,7 @@
 <body>
   <header class="nav">
     <div class="container nav-inner">
-      <div class="brand"><img src="https://i.imgur.com/pH0NvnY.png" class="logo" alt="LaundryZone">LaundryZone</div>
+    <div class="brand"><img src="https://i.imgur.com/pH0NvnY.png" class="logo" alt="LaundryZone">LaundryZone</div>
       <nav class="menu" id="mainMenu">
         <button data-view="home" class="active">Beranda</button>
         <button data-view="order">Pesan</button>
@@ -131,6 +127,7 @@
         <div class="ink" id="ink"></div>
       </nav>
       <div class="right-actions">
+        <label class="toggle"><input type="checkbox" id="themeToggle"> <span>🌙 Dark</span></label>
         <div class="pill"><span id="langBtn" style="cursor:pointer">🇮🇩 ID</span></div>
       </div>
     </div>
@@ -206,6 +203,9 @@
     function navigate(v,animate=true){currentView=v;render(animate);$$('#mainMenu button').forEach(b=>{b.classList.toggle('active',b.dataset.view===v); if(b.dataset.view===v) moveInk(b)});}
 
     // ===== Theme & Lang with persistence
+    const themeToggle=$('#themeToggle');
+    function applyTheme(){document.body.setAttribute('data-theme', themeToggle.checked?'dark':'light'); saveLS('THEME_DARK',themeToggle.checked)}
+    themeToggle.addEventListener('change',applyTheme);
     $('#langBtn').addEventListener('click',()=>{LANG=LANG==='id'?'en':'id'; $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN'; saveLS('LANG',LANG); render();});
 
     // ===== Shared rendering helpers
@@ -670,6 +670,21 @@
     // ===== Payment Modal + QR dummy
     function togglePay(show){ $('#payModal').style.display = show?'flex':'none'; if(show) drawQR(); }
     function drawQR(){ const c=$('#qr'); const ctx=c.getContext('2d'); const s=20; ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); for(let y=0;y<c.height;y+=s){ for(let x=0;x<c.width;x+=s){ if((x+y)%40===0 || Math.random()>.75){ ctx.fillStyle='#000'; ctx.fillRect(x+2,y+2,s-4,s-4);} } } ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--blue'); ctx.fillRect(10,10,60,60); ctx.fillRect(c.width-70,10,60,60); ctx.fillRect(10,c.height-70,60,60); }
+
+    // ===== Shortcuts
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='g') { themeToggle.checked=!themeToggle.checked; applyTheme(); }
+      if(e.key==='/'){ e.preventDefault(); navigate('order'); }
+    });
+
+    // ===== Init
+    function init(){
+      const dark=loadLS('THEME_DARK',false); themeToggle.checked=!!dark; applyTheme();
+      $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN';
+      $$('#mainMenu button').forEach(b=> b.onclick=()=>navigate(b.dataset.view));
+      moveInk($$('#mainMenu button')[0]);
+      render(false);
+    }
 
     init();
   </script>
