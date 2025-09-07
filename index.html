@@ -28,7 +28,7 @@
     .nav{position:sticky;top:0;background:linear-gradient(180deg,var(--white),#ffffffd9);backdrop-filter:blur(8px);border-bottom:1px solid var(--gray-2);z-index:20}
     .nav-inner{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
     .brand{display:flex;align-items:center;gap:.7rem;font-weight:900;color:var(--blue)}
-    .brand .logo{width:40px;height:40px;object-fit:contain;
+    .brand .logo{width:40px;height:40px;background:var(--blue);border-radius:12px;display:grid;place-items:center;color:#fff;font-size:1.2rem;animation:spin 8s linear infinite}
     .menu{position:relative;display:flex;gap:6px;flex-wrap:wrap}
     .menu button{background:transparent;border:0;padding:.7rem 1rem;border-radius:12px;color:var(--muted);cursor:pointer;font-weight:700;transition:.25s}
     .menu button.active,.menu button:hover{color:var(--blue);}
@@ -108,6 +108,7 @@
     .badge{padding:.2rem .5rem;border-radius:999px;border:1px solid var(--gray-2)}
 
     /* ========= ANIMATIONS ========= */
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
     @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .slide{animation:slideIn .35s ease}
   </style>
@@ -115,7 +116,7 @@
 <body>
   <header class="nav">
     <div class="container nav-inner">
-    <div class="brand"><img src="https://i.imgur.com/pH0NvnY.png" class="logo" alt="LaundryZone">LaundryZone</div>
+      <div class="brand"><div class="logo">🧺</div>LaundryZone</div>
       <nav class="menu" id="mainMenu">
         <button data-view="home" class="active">Beranda</button>
         <button data-view="order">Pesan</button>
