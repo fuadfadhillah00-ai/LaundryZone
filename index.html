@@ -59,7 +59,7 @@
     .btn.icon{padding:.5rem .7rem}
     .pill{display:inline-flex;gap:8px;align-items:center;border:1px solid var(--gray-2);padding:.3rem .6rem;border-radius:999px}
 
-    .footer{margin-top:40px;padding:20px 0;border-top:1px solid var(--gray-2);color:var(--muted);text-align:center}
+    .footer{margin-top:40px;padding:20px;border-top:1px solid var(--gray-2);color:var(--muted);text-align:center}
 
     /* ========= TOAST / NOTIF ========= */
     .toast{position:fixed;bottom:20px;right:20px;background:var(--blue);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.35s;z-index:40}
@@ -88,7 +88,7 @@
     /* ========= CHAT ========= */
     .chat{display:flex;flex-direction:column;height:260px;border:1px solid var(--gray-2);border-radius:14px;overflow:hidden}
     .chat-log{flex:1;background:var(--white);padding:12px;overflow:auto}
-    .msg{max-width:80%;padding:10px 12px;border-radius:14px;margin:6px;box-shadow:var(--shadow)}
+    .msg{max-width:80%;padding:10px 12px;border-radius:14px;margin:6px 0;box-shadow:var(--shadow)}
     .me{background:var(--blue);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
     .them{background:#fff;border:1px solid var(--gray-2);color:var(--text);border-bottom-left-radius:4px}
     .chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--gray-2);background:var(--white)}
@@ -128,7 +128,6 @@
         <div class="ink" id="ink"></div>
       </nav>
       <div class="right-actions">
-       <label class="toggle" style="display: none;"><input type="checkbox" id="themeToggle"> <span>🌙 Dark</span></label>
         <div class="pill"><span id="langBtn" style="cursor:pointer">🇮🇩 ID</span></div>
       </div>
     </div>
@@ -204,9 +203,6 @@
     function navigate(v,animate=true){currentView=v;render(animate);$$('#mainMenu button').forEach(b=>{b.classList.toggle('active',b.dataset.view===v); if(b.dataset.view===v) moveInk(b)});}
 
     // ===== Theme & Lang with persistence
-    const themeToggle=$('#themeToggle');
-    function applyTheme(){document.body.setAttribute('data-theme', themeToggle.checked?'dark':'light'); saveLS('THEME_DARK',themeToggle.checked)}
-    themeToggle.addEventListener('change',applyTheme);
     $('#langBtn').addEventListener('click',()=>{LANG=LANG==='id'?'en':'id'; $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN'; saveLS('LANG',LANG); render();});
 
     // ===== Shared rendering helpers
@@ -302,7 +298,7 @@
           </div>
           <div class='card'>
             <h3>Ulasan</h3>
-            <div class='notice'>“Rapi, wangi, tepat waktu!” — 1.2k ulasan</div>
+            <div class='notice'>"Rapi, wangi, tepat waktu!" — 1.2k ulasan</div>
             <h3 style='margin-top:10px'>Harga (dummy)</h3>
             <div class='grid cols-2'>
               <div class='notice'>Kiloan: Rp7.000/kg<br>Express: Rp10.000/kg</div>
@@ -439,7 +435,7 @@
     function iconFor(s){const map={Kiloan:'🧺',Express:'⚡',Sepatu:'👟','Cuci Sepatu':'👟','Cuci Jas':'🤵','Dry Clean':'🧥','Jas':'🤵'};return `<span>${map[s]||'🧼'}</span>`}
 
     function shopCard(sh){return `<div class='card shop-card'>
-      <div class='row'><div class='pill'><span style='font-size:1.4rem'>${sh.logo</span><b>${sh.name}</b></div>
+      <div class='row'><div class='pill'><span style='font-size:1.4rem'>${sh.logo}</span><b>${sh.name}</b></div>
       <button class='btn icon' data-fav='${sh.id}'>${isFav(sh.id)?'❤️':'🤍'}</button></div>
       <div class='row'><span>⭐ ${sh.rating}</span><span>${sh.dist} km</span></div>
       <div class='chip'>${sh.promo}</div>
@@ -684,15 +680,8 @@
     function togglePay(show){ $('#payModal').style.display = show?'flex':'none'; if(show) drawQR(); }
     function drawQR(){ const c=$('#qr'); const ctx=c.getContext('2d'); const s=20; ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); for(let y=0;y<c.height;y+=s){ for(let x=0;x<c.width;x+=s){ if((x+y)%40===0 || Math.random()>.75){ ctx.fillStyle='#000'; ctx.fillRect(x+2,y+2,s-4,s-4);} } } ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--blue'); ctx.fillRect(10,10,60,60); ctx.fillRect(c.width-70,10,60,60); ctx.fillRect(10,c.height-70,60,60); }
 
-    // ===== Shortcuts
-    document.addEventListener('keydown',(e)=>{
-      if(e.key==='g') { themeToggle.checked=!themeToggle.checked; applyTheme(); }
-      if(e.key==='/'){ e.preventDefault(); navigate('order'); }
-    });
-
     // ===== Init
     function init(){
-      const dark=loadLS('THEME_DARK',false); themeToggle.checked=!!dark; applyTheme();
       $('#langBtn').textContent = LANG==='id'?'🇮🇩 ID':'🇬🇧 EN';
       $$('#mainMenu button').forEach(b=> b.onclick=()=>navigate(b.dataset.view));
       moveInk($$('#mainMenu button')[0]);
