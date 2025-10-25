@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LaundryZone</title>
+  <title>LaundroMate</title>
   <style>
     /* ========= THEME ========= */
     :root{
@@ -157,7 +157,7 @@
 <body>
   <header class="nav">
     <div class="container nav-inner">
-      <div class="brand"><img src="https://i.imgur.com/pH0NvnY.png" class="logo" alt="LaundryZone">LaundryZone</div>
+      <div class="brand"><img src="https://i.imgur.com/pH0NvnY.png" class="logo" alt="LaundroMate">LaundroMate</div>
       <nav class="menu" id="mainMenu">
         <button data-view="home" class="active">Beranda</button>
         <button data-view="order">Pesan</button>
@@ -189,7 +189,7 @@
   </header>
 
   <main class="container" id="app"></main>
-  <footer class="container footer">© 2025 LaundryZone — Aplikasi Pelanggan</footer>
+  <footer class="container footer">© 2025 LaundroMate — Aplikasi Pelanggan</footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="notif-bubble" id="notif"></div>
 
@@ -660,7 +660,7 @@
             courier.active=false; 
             startRideDetail.__hitLaundry=false; 
             startRideDetail.__almostHome=false;
-            toast('Terima kasih telah menggunakan LaundryZone!');
+            toast('Terima kasih telah menggunakan LaundroMate!');
             setOrderProgress(currentOrderId, 1);
             render();
           }
@@ -710,7 +710,7 @@
 
     function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
     function elMsg(txt,me=false){ const d=document.createElement('div'); d.className='msg '+(me?'me':'them'); d.textContent=typeof txt==='function'?txt():txt; return d; }
-    function presetChat(){ const log=$('#chatLog'); if(!log) return; log.innerHTML=''; log.appendChild(elMsg('Halo, saya kurir LaundryZone. Saya jemput dulu ya 🚚')); log.appendChild(elMsg('Siap kak, ditunggu 🙌', true)); log.scrollTop=log.scrollHeight; }
+    function presetChat(){ const log=$('#chatLog'); if(!log) return; log.innerHTML=''; log.appendChild(elMsg('Halo, saya kurir LaundroMate. Saya jemput dulu ya 🚚')); log.appendChild(elMsg('Siap kak, ditunggu 🙌', true)); log.scrollTop=log.scrollHeight; }
     function sendMsg(){ const inp=$('#chatTxt'); if(!inp.value.trim()) return; const log=$('#chatLog'); const text=inp.value; const userText=text.toLowerCase(); log.appendChild(elMsg(text,true)); log.scrollTop=log.scrollHeight; inp.value=''; setTimeout(()=>{
         let reply=pick(replyPool.general);
         if(userText.includes('berapa')||userText.includes('eta')||userText.includes('sampai')) reply=pick(replyPool.eta);
@@ -724,7 +724,7 @@
     let currentLaundryChat={id:null,name:null};
     const replyPoolLaundry={
       general:[
-        'Halo kak, LaundryZone store di sini. Ada yang bisa dibantu? 😊',
+        'Halo kak, LaundroMate store di sini. Ada yang bisa dibantu? 😊',
         'Siap kak, kami bantu ya. 🙌',
         'Noted kak, terima kasih sudah menghubungi kami.'
       ],
